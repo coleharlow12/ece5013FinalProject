@@ -113,4 +113,7 @@ noise = randn(size(rxComb))*stdN + 1i*randn(size(rxComb))*stdN;
 %% Combine Signal and Noise
 rxS_N = rxComb+noise;
 
+figure(2)
 plot(real(rxComb))
+figure(3)
+plot(real(rxS_N))
