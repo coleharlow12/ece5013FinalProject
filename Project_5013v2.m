@@ -7,6 +7,7 @@ c = 3e8;
 %% Set Radar Parameters
 fc = 10.5e9; %Radar center frequency (Hz)
 Bo = 120e6; %Radar Sweep Bandwidth (Hz)
+Bf = 125e6; %Full Radar Bandwidth (Hz)
 Tau = 80e-6; %Ramp period (s)
 prf = 1e3; %Ramp Rate (Hz)
 Pt = 10^((20-30)/10);
@@ -17,7 +18,7 @@ fs = 250e6; %Sampling Rate (samples/sec)
 beamW = 60*pi/180; %Antenna Beamwidth (radians)
 Ga = 10^(3/10); %Antenna Gain for both RX/TX (linear)
 
-NF = 10^(8/10); %Noise figure of system (linear)
+F = 10^(8/10); %Noise figure of system (linear)
 
 %% Target Parameters
 tarR = [30]; %target range (m)
@@ -42,10 +43,9 @@ stD = zeros(size(t));
 
 for it=1:length(t)
     if (t(it) <= Tau)
-        %Amplitude is not considered here because it is considered in friis
-        %scaling
-        stU(it) = Pt*exp(1i*(2*pi*t(it)+pi*Bo/Tau*t(it)^2)); %Up Ramp signal
-        stD(it) = Pt*exp(1i*(2*pi*t(it)-pi*Bo/Tau*t(it)^2)); %Down ramp signal
+        %Take the sqrt because we measure voltage not power
+        stU(it) = sqrt(Pt)*exp(1i*(2*pi*t(it)+pi*Bo/Tau*t(it)^2)); %Up Ramp signal
+        stD(it) = sqrt(Pt)*exp(1i*(2*pi*t(it)-pi*Bo/Tau*t(it)^2)); %Down ramp signal
     end
 end
 
@@ -97,13 +97,20 @@ for iP = 1:Np
             rxsigD(it) = exp(1i*(2*pi*(t(it)-trnd+td)+pi*Bo/Tau*(t(it)-trnd+td)^2)); %Down Ramp signal
         end
     end
-    FriisScale = Pt*Ga^2*lambda^2*rcs/((4*pi)^3*r^4);
-    rxSigU = FriisScale*rxsigU;
-    rxSigD = FriisScale*rxsigD;
+    FriisScale = Pt*Ga^2*lambda^2*rcs/((4*pi)^3*r^4); %Calculate Friss Factor
+    rxSigU = sqrt(FriisScale)*rxsigU; %Take sqrt becaue we measure voltage not power
+    rxSigD = sqrt(FriisScale)*rxsigD;
     
     rxComb = [rxComb, (rxSigU+rxSigD)]; %Concatenate new data
 end
 
 %% Add Noise
+kTo = 4*10^-21;
+Pnoise = kTo*Bf*F;
+stdN = sqrt(Pnoise/2);
+noise = randn(size(rxComb))*stdN + 1i*randn(size(rxComb))*stdN;
 
+%% Combine Signal and Noise
+rxS_N = rxComb+noise;
 
+plot(real(rxComb))
