@@ -23,7 +23,7 @@ F = 10^(8/10); %Noise figure of system (linear)
 %% Target Parameters
 tarR = [30]; %target range (m)
 velX = [10]; %Velocity Perpendicular to Boresight
-velY = [0]; %Velocity Parellel to Boresight
+velY = [10]; %Velocity Parellel to Boresight
 angAz = [-10]*pi/180; %Azimuth angle ([degrees] -> radians)
 rcs = [3]; %Target RCS
 
@@ -97,7 +97,7 @@ for iP = 1:Np
             rxsigD(it) = 0;
         else
             rxsigU(it) = exp(1i*(2*pi*(t(it)-trnd)+pi*Bo/Tau*(t(it)-trnd)^2)); %Up Ramp signal
-            rxsigD(it) = exp(1i*(2*pi*(t(it)-trnd+td)+pi*Bo/Tau*(t(it)-trnd+td)^2)); %Down Ramp signal
+            rxsigD(it) = exp(1i*(2*pi*(t(it)-trnd+td)-pi*Bo/Tau*(t(it)-trnd+td)^2)); %Down Ramp signal
         end
     end
     FriisScale = Pt*Ga^2*lambda^2*rcs/((4*pi)^3*r^4); %Calculate Friss Factor
@@ -136,40 +136,54 @@ end
 hU = conj(fliplr(hU));
 hD = conj(fliplr(hD));
 
-h = hU+hD;
-
-figure(4)
+% figure(4)
 % plot(t(1:index),real(hU),'r-',t(1:index),real(hD),'b-','LineWidth',2);
 
 %% Convolve Matched Filter
 
 rx_signal = zeros(Np,Tau*fs+500);
-rx_filtered = zeros(Np,501);
+rx_filteredU = zeros(Np,501);
+rx_filteredD = zeros(Np,501);
 
 for it=1:Np
     rx_signal(it,:) = rxS_N(it*uint64(Tp*fs)-uint64(Tp*fs)+1:round(it*uint64(Tp*fs)+Tau*fs-uint64(Tp*fs)+500));
 end
 
 for it=1:Np
-    rx_filtered(it,:) = conv(rx_signal(it,:),h,'valid');
+    rx_filteredU(it,:) = conv(rx_signal(it,:),hU,'valid');
+    rx_filteredD(it,:) = conv(rx_signal(it,:),hD,'valid');
 end
 
 %% Plot delay vs pulse
 
 Tau_grid = (0:500)*1/fs;
 
+figure(4)
+imagesc(Tau_grid,1:64,abs(rx_filteredU));
+title('Up');
+xlabel('Delay');
+ylabel('Pulse No');
+
 figure(5)
-imagesc(Tau_grid,1:64,abs(rx_filtered));
+imagesc(Tau_grid,1:64,abs(rx_filteredD));
+title('Down');
 xlabel('Delay');
 ylabel('Pulse No');
 
 %% Plot delay vs frequency
-range_doppler=fftshift(fft(rx_filtered,[],1),1);
+range_dopplerU=fftshift(fft(rx_filteredU,[],1),1);
+range_dopplerD=fftshift(fft(rx_filteredD,[],1),1);
 
 nu_grid = 1/Np*(-Np/2:1:(Np/2)-1);
 
 figure(6)
-imagesc(Tau_grid,nu_grid,abs(range_doppler));
+imagesc(Tau_grid,nu_grid,abs(range_dopplerU));
+title('Up');
 xlabel('Delay (sec)');
-ylabel('Normalized Frequency (sec)');
+ylabel('Normalized Frequency');
 
+figure(7)
+imagesc(Tau_grid,nu_grid,abs(range_dopplerD));
+title('Down');
+xlabel('Delay (sec)');
+ylabel('Normalized Frequency');
