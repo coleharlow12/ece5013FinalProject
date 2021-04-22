@@ -1,3 +1,5 @@
+clc
+close all;
 clear all;
 
 %% Physical Constants %%%
@@ -65,15 +67,22 @@ for k=0:Np-1
     %Signal is 0 everywhere except the current pulse so addition is across
     %entire vector
     %up ramp
-    za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
-        (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
-        (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
+%     za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
+%         (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
+%         (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
+    
+    za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau) .* ...
+        (exp(1i*2*pi*fc*(t-k*Tp-(Rup1+Rdown)/c))) .* ...
+        (exp(1i*pi*(beta/tau).*(t-k*Tp-(Rup1+Rdown)/c).^2)));
     
     %down ramp
-    za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
-        (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
-        (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
-   
+%     za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
+%         (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
+%         (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
+    
+   za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau) .* ...
+        (exp(1i*2*pi*fc*(t-k*Tp-(Rup2+Rdown)/c))) .* ...
+        (exp(-1i*pi*(beta/tau).*(t-k*Tp-(Rup2+Rdown)/c).^2)));
 
 end
 za=za1+za2+noise;
@@ -85,10 +94,13 @@ plot(t,za)
 
 %Prepare match filter for Tx1
 tm=0:Ts:tau-Ts;                             %time range
-hu=exp(1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
+%hu=exp(1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
+hu = exp(1i*(2*pi*fc*tm+pi*beta/tau*tm.^2)); %Up Ramp signal
 hu=conj(fliplr(hu));                        %conjugate and flip the time.
 
-hd = exp(-1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
+%Prepare match filter for TX2
+%hd = exp(-1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
+hd = exp(1i*(2*pi*fc*tm-pi*beta/tau*tm.^2)); %Down ramp signal
 hd = conj(fliplr(hd));
 
 
