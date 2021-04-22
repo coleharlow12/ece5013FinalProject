@@ -154,7 +154,7 @@ for it=1:Np
     rx_filtered(it,:) = conv(rx_signal(it,:),h,'valid');
 end
 
-%% Plot Tau
+%% Plot delay vs pulse
 
 Tau_grid = (0:500)*1/fs;
 
