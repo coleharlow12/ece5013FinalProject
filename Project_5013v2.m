@@ -41,11 +41,14 @@ t = (1/(fs)):(1/(fs)):Tp; %Sampled Data times
 stU = zeros(size(t));
 stD = zeros(size(t));
 
+index = 0;
+
 for it=1:length(t)
     if (t(it) <= Tau)
         %Take the sqrt because we measure voltage not power
-        stU(it) = sqrt(Pt)*exp(1i*(2*pi*t(it)+pi*Bo/Tau*t(it)^2)); %Up Ramp signal
-        stD(it) = sqrt(Pt)*exp(1i*(2*pi*t(it)-pi*Bo/Tau*t(it)^2)); %Down ramp signal
+        stU(it) = sqrt(Pt)*exp(1i*(2*pi*fc*t(it)+pi*Bo/Tau*t(it)^2)); %Up Ramp signal
+        stD(it) = sqrt(Pt)*exp(1i*(2*pi*fc*t(it)-pi*Bo/Tau*t(it)^2)); %Down ramp signal
+        index = it; %Store index such that t(it)<=Tau
     end
 end
 
@@ -117,3 +120,45 @@ figure(2)
 plot(real(rxComb))
 figure(3)
 plot(real(rxS_N))
+%% Matched Filter
+
+hU = [];
+hD = [];
+
+for it=1:length(t)
+    if (t(it) <= Tau)
+        %Take the sqrt because we measure voltage not power
+        hU(it) = exp(1i*(2*pi*fc*t(it)+pi*Bo/Tau*t(it)^2)); %Up Ramp signal
+        hD(it) = exp(1i*(2*pi*fc*t(it)-pi*Bo/Tau*t(it)^2)); %Down ramp signal
+    end
+end
+
+hU = conj(fliplr(hU));
+hD = conj(fliplr(hD));
+
+h = hU+hD;
+
+figure(4)
+% plot(t(1:index),real(hU),'r-',t(1:index),real(hD),'b-','LineWidth',2);
+
+%% Convolve Matched Filter
+
+rx_signal = zeros(Np,Tau*fs+500);
+rx_filtered = zeros(Np,501);
+
+for it=1:Np
+    rx_signal(it,:) = rxS_N(it*uint64(Tp*fs)-uint64(Tp*fs)+1:round(it*uint64(Tp*fs)+Tau*fs-uint64(Tp*fs)+500));
+end
+
+for it=1:Np
+    rx_filtered(it,:) = conv(rx_signal(it,:),h,'valid');
+end
+
+%% Plot Tau
+
+Tau_grid = (0:500)*1/fs;
+
+figure(5)
+imagesc(Tau_grid,1:64,abs(rx_filtered));
+xlabel('Delay');
+ylabel('Pulse No');
