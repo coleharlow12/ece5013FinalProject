@@ -162,3 +162,14 @@ figure(5)
 imagesc(Tau_grid,1:64,abs(rx_filtered));
 xlabel('Delay');
 ylabel('Pulse No');
+
+%% Plot delay vs frequency
+range_doppler=fftshift(fft(rx_filtered,[],1),1);
+
+nu_grid = 1/Np*(-Np/2:1:(Np/2)-1);
+
+figure(6)
+imagesc(Tau_grid,nu_grid,abs(range_doppler));
+xlabel('Delay (sec)');
+ylabel('Normalized Frequency (sec)');
+
