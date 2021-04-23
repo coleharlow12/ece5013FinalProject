@@ -35,9 +35,9 @@ Ts = 1/fs;          % sample period
 t = 0:Ts:Np*Tp-Ts;     % time vector (Np+1) Tp long, 
 
 %% Parameters for Target %%%
-R0 = 30;            % R0 is initially 30 meters
+R0 = 25.3857;            % R0 is initially 30 meters
 theta = 10;         % theta = azimuth angle, initially at 10 degrees
-v = 10;             % vertical  velocity is 10 m/s
+v = 137;             % vertical  velocity is 10 m/s
 
 %% Received signals
 za1 = zeros(size(t));   % received signal from transmitter 1
@@ -54,7 +54,7 @@ tx1=[ 0, lambda/4]; tx2=[0, -lambda/4]; rx=[0,0];
 
 % calculate azimuth angle, range, and received signals at each location
 for k=0:Np-1
-    target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v];
+    target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v]
     
     Rup1 = norm(tx1-target); %tx1 to target distance
     Rup2= norm(tx2-target); %tx2 to target distance
@@ -67,56 +67,48 @@ for k=0:Np-1
     %Signal is 0 everywhere except the current pulse so addition is across
     %entire vector
     %up ramp
-%     za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
-%         (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
-%         (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
-    
-    za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau) .* ...
-        (exp(1i*2*pi*fc*(t-k*Tp-(Rup1+Rdown)/c))) .* ...
-        (exp(1i*pi*(beta/tau).*(t-k*Tp-(Rup1+Rdown)/c).^2)));
+    za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
+        (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
+        (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
     
     %down ramp
-%     za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
-%         (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
-%         (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
-    
-   za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau) .* ...
-        (exp(1i*2*pi*fc*(t-k*Tp-(Rup2+Rdown)/c))) .* ...
-        (exp(-1i*pi*(beta/tau).*(t-k*Tp-(Rup2+Rdown)/c).^2)));
-
+    za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
+        (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
+        (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
 end
 za=za1+za2+noise;
 
 figure(5)
 plot(t,za)
 
-%%
-
+%% Match Filter
 %Prepare match filter for Tx1
 tm=0:Ts:tau-Ts;                             %time range
-%hu=exp(1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
-hu = exp(1i*(2*pi*fc*tm+pi*beta/tau*tm.^2)); %Up Ramp signal
+hu=exp(1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
+%hu = exp(1i*(2*pi*fc*tm+pi*beta/tau*tm.^2)); %Up Ramp signal
 hu=conj(fliplr(hu));                        %conjugate and flip the time.
 
 %Prepare match filter for TX2
-%hd = exp(-1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
-hd = exp(1i*(2*pi*fc*tm-pi*beta/tau*tm.^2)); %Down ramp signal
+hd = exp(-1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
+%hd = exp(1i*(2*pi*fc*tm-pi*beta/tau*tm.^2)); %Down ramp signal
 hd = conj(fliplr(hd));
 
-
-receivearray=zeros(Np,tau*fs+500); %20,000 is tau*fs
+Ntau = 500; %The number of delays to test out
+receivearray=zeros(Np,tau*fs+Ntau); %20,000 is tau*fs the Ntau padding is so that we can do convolution without samples not overlapping
 for k=0:Np-1
-    receivearray(k+1,:)=za(k*uint64(Tp*fs)+1:round(k*uint64(Tp*fs)+tau*fs+500));%Essentially takes each chirp of data?
+    receivearray(k+1,:)=za(k*uint64(Tp*fs)+1:round(k*uint64(Tp*fs)+tau*fs+Ntau));%Essentially takes each chirp of data?
 end
 
-UpArray=zeros(Np,501);
-DownArray=zeros(Np,501);
+UpArray=zeros(Np,Ntau+1); 
+DownArray=zeros(Np,Ntau+1);
 for k=0:Np-1
     UpArray(k+1,:)=conv(receivearray(k+1,:),hu,'valid'); %Convolution flips then scans
     DownArray(k+1,:)=conv(receivearray(k+1,:),hd,'valid'); %Convolution flips then scans
 end
 
-taugrid=(0:500)*Ts;
+%% Plot Matched Filter Results
+% Tau Grid has Ntau samples on it
+taugrid=(0:Ntau)*Ts; %Different delays which are tested each delay corresponds to a range of 2*R/c
 figure(1);imagesc(taugrid,1:64,abs(UpArray));
 xlabel('Delay'); ylabel('Pulse No');
 figure(2);imagesc(taugrid,1:64,abs(DownArray));
@@ -126,7 +118,7 @@ rangedopplerUp=fftshift( fft(UpArray,[],1),1);
 rangedopplerDown=fftshift( fft(DownArray,[],1),1);
 
 nugrid=1/Np*(-Np/2:1:(Np/2)-1);
-taugrid=(0:500)*Ts;
+taugrid=(0:Ntau)*Ts;
 figure(3);imagesc(taugrid,nugrid, abs(rangedopplerUp))
 figure(4);imagesc(taugrid,nugrid, abs(rangedopplerDown))
 
@@ -152,21 +144,29 @@ title('Down Pulse');
 [m,s1] = max(abs(rangedopplerUp),[],2);
 [m,s2] = max(abs(rangedopplerDown),[],2);
 
-radial_speed1 = (s1/500*fp)*c/(2*fc);
+radial_speed1 = (s1/Ntau*fp)*c/(2*fc);
 figure(7);
 plot(radial_speed1);
 
-radial_speed2 = (s2/500*fp)*c/(2*fc);
+radial_speed2 = (s2/Ntau*fp)*c/(2*fc);
 figure(8);
 plot(radial_speed2);
 
-plot(abs(rangedopplerUp(1,:)));
+%% Determine the Azimuth Angle
+azAng = zeros(size(UpArray,1),1);
+d = lambda/2;
 
-%Things to try, window the match filter, window the pulses, add ground
-%return, use MTI cancelling, zeropad FFT, % label the range doppler map in 
-% velocity(m/sec) and Range( meters)
+for ip = 1:size(UpArray,1) %Iterate across all pulses
+    if d1(ip)==d2(ip)
+        angU = angle(UpArray(ip,d1(ip)));
+        angD = angle(DownArray(ip,d2(ip)));
+        difAng = (angU-angD);
+        theta = asin(difAng*lambda/(2*pi*d))*180/pi;
+    end
+end
 
 
+%% Functions
 %%% Creates a rectangular pulse of width tau from 0<t<tau %%%
 function p = rpulse(t,tau)
     p = (t<=tau)&(t>=0);
