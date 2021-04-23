@@ -35,9 +35,9 @@ Ts = 1/fs;          % sample period
 t = 0:Ts:Np*Tp-Ts;     % time vector (Np+1) Tp long, 
 
 %% Parameters for Target %%%
-R0 = 25.3857;            % R0 is initially 30 meters
+R0 = 30;            % R0 is initially 30 meters
 theta = 10;         % theta = azimuth angle, initially at 10 degrees
-v = 137;             % vertical  velocity is 10 m/s
+v = 10;             % vertical  velocity is 10 m/s
 
 %% Received signals
 za1 = zeros(size(t));   % received signal from transmitter 1
@@ -76,10 +76,22 @@ for k=0:Np-1
         (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
         (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
 end
-za=za1+za2+noise;
+%%
+za = za1+za2;
+
+figure(4)
+plot(t,abs(za))
+xlabel('time (s)') 
+ylabel('abs(rx)')
+set(gca,'fontsize',18)
+
+za=za+noise;
 
 figure(5)
-plot(t,za)
+plot(t,abs(za))
+xlabel('time (s)') 
+ylabel('abs(rx)')
+set(gca,'fontsize',18)
 
 %% Match Filter
 %Prepare match filter for Tx1
@@ -161,9 +173,20 @@ for ip = 1:size(UpArray,1) %Iterate across all pulses
         angU = angle(UpArray(ip,d1(ip)));
         angD = angle(DownArray(ip,d2(ip)));
         difAng = (angU-angD);
-        theta = asin(difAng*lambda/(2*pi*d))*180/pi;
+        ang = asin(difAng*lambda/(2*pi*d))*180/pi;
+        if isreal(ang)
+            azAng(ip)=ang;
+        else
+            azAng(ip)=[];
+        end
     end
 end
+
+figure(9)
+plot(azAng,'LineWidth',2)
+xlabel('pulse')
+ylabel('azimuth location')
+set(gca,'fontsize',18)
 
 
 %% Functions
