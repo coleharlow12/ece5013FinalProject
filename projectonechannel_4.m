@@ -118,6 +118,7 @@ end
 
 taugrid=(0:500)*Ts;
 figure(1);imagesc(taugrid,1:64,abs(UpArray));
+xlabel('Delay'); ylabel('Pulse No');
 figure(2);imagesc(taugrid,1:64,abs(DownArray));
 xlabel('Delay'); ylabel('Pulse No');
 
@@ -131,6 +132,34 @@ figure(4);imagesc(taugrid,nugrid, abs(rangedopplerDown))
 
 xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');
 
+[m,d1] = max(abs(UpArray),[],2);
+[m,d2] = max(abs(DownArray),[],2);
+
+range_d1 = d1*Ts*c/2;
+figure(5);
+plot(range_d1);
+xlabel('Pulse No');
+ylabel('Range(m)');
+title('Up Pulse');
+
+range_d2 = d2*Ts*c/2;
+figure(6);
+plot(range_d2);
+xlabel('Pulse No');
+ylabel('Range(m)');
+title('Down Pulse');
+
+[m,s1] = max(abs(rangedopplerUp),[],2);
+[m,s2] = max(abs(rangedopplerDown),[],2);
+
+radial_speed1 = (s1/500*fs)*c/(2*fc);
+figure(7);
+plot(radial_speed1);
+
+radial_speed2 = (s2/500*fs)*c/(2*fc);
+figure(8);
+plot(radial_speed2);
+
 %Things to try, window the match filter, window the pulses, add ground
 %return, use MTI cancelling, zeropad FFT, % label the range doppler map in 
 % velocity(m/sec) and Range( meters)
@@ -140,4 +169,7 @@ xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');
 function p = rpulse(t,tau)
     p = (t<=tau)&(t>=0);
 end
+
+
+
 
