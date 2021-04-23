@@ -37,7 +37,7 @@ t = 0:Ts:Np*Tp-Ts;     % time vector (Np+1) Tp long,
 %% Parameters for Target %%%
 R0 = 30;            % R0 is initially 30 meters
 theta = 10;         % theta = azimuth angle, initially at 10 degrees
-v = 10;             % vertical  velocity is 10 m/s
+v = 137;             % vertical  velocity is 10 m/s
 
 %% Received signals
 za1 = zeros(size(t));   % received signal from transmitter 1
@@ -51,6 +51,7 @@ sigma_n=sqrt(Pnoise/2); % You should calculate using k T0 BW F
 noise = sigma_n*(randn(1,length(t))) + 1i*(sigma_n*(randn(1,length(t))));
 
 tx1=[ 0, lambda/4]; tx2=[0, -lambda/4]; rx=[0,0];
+trueAz= zeros(Np,1)
 
 % calculate azimuth angle, range, and received signals at each location
 for k=0:Np-1
@@ -59,6 +60,8 @@ for k=0:Np-1
     Rup1 = norm(tx1-target); %tx1 to target distance
     Rup2= norm(tx2-target); %tx2 to target distance
     Rdown = norm(rx-target); %rx to target distance
+    trueAz(k+1) = atan(target(2)/target(1))*180/pi;
+
     
    Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); % You should  compute for each pulse using radar 
          % range eqn, OR ccompute once for some nominal range 
@@ -139,14 +142,14 @@ xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');
 [m,d1] = max(abs(UpArray),[],2);
 [m,d2] = max(abs(DownArray),[],2);
 
-range_d1 = d1*Ts*c/2;
+range_d1 = (d1-1)*Ts*c/2;
 figure(5);
 plot(range_d1);
 xlabel('Pulse No');
 ylabel('Range(m)');
 title('Up Pulse');
 
-range_d2 = d2*Ts*c/2;
+range_d2 = (d2-1)*Ts*c/2;
 figure(6);
 plot(range_d2);
 xlabel('Pulse No');
@@ -156,11 +159,11 @@ title('Down Pulse');
 [m,s1] = max(abs(rangedopplerUp),[],2);
 [m,s2] = max(abs(rangedopplerDown),[],2);
 
-radial_speed1 = (s1/Ntau*fp)*c/(2*fc);
+radial_speed1 = ((s1-1)/Ntau*fp)*c/(2*fc);
 figure(7);
 plot(radial_speed1);
 
-radial_speed2 = (s2/Ntau*fp)*c/(2*fc);
+radial_speed2 = ((s2-1)/Ntau*fp)*c/(2*fc);
 figure(8);
 plot(radial_speed2);
 
@@ -169,24 +172,39 @@ azAng = zeros(size(UpArray,1),1);
 d = lambda/2;
 
 for ip = 1:size(UpArray,1) %Iterate across all pulses
-    if d1(ip)==d2(ip)
+    %if d1(ip)==d2(ip)
         angU = angle(UpArray(ip,d1(ip)));
         angD = angle(DownArray(ip,d2(ip)));
         difAng = (angU-angD);
-        ang = asin(difAng*lambda/(2*pi*d))*180/pi;
+        
+        if(difAng>1)
+            difAng=difAng-2*pi;
+        end
+        
+        if(difAng<-1)
+            difAng=difAng+2*pi;
+        end
+        difAng
+            
+        ang = asin(difAng*lambda/(2*pi*d))*180/pi
         if isreal(ang)
             azAng(ip)=ang;
         else
-            azAng(ip)=[];
+            %azAng(ip)=[];
         end
-    end
+    %end
 end
 
 figure(9)
 plot(azAng,'LineWidth',2)
+hold on
+plot(trueAz,'LineWidth',2)
+hold off
 xlabel('pulse')
 ylabel('azimuth location')
 set(gca,'fontsize',18)
+legend('Detected','True')
+
 
 
 %% Functions
