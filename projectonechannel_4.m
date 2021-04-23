@@ -152,13 +152,15 @@ title('Down Pulse');
 [m,s1] = max(abs(rangedopplerUp),[],2);
 [m,s2] = max(abs(rangedopplerDown),[],2);
 
-radial_speed1 = (s1/500*fs)*c/(2*fc);
+radial_speed1 = (s1/500*fp)*c/(2*fc);
 figure(7);
 plot(radial_speed1);
 
-radial_speed2 = (s2/500*fs)*c/(2*fc);
+radial_speed2 = (s2/500*fp)*c/(2*fc);
 figure(8);
 plot(radial_speed2);
+
+plot(abs(rangedopplerUp(1,:)));
 
 %Things to try, window the match filter, window the pulses, add ground
 %return, use MTI cancelling, zeropad FFT, % label the range doppler map in 
