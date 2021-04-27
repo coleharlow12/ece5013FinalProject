@@ -37,7 +37,7 @@ t = 0:Ts:Np*Tp-Ts;     % time vector (Np+1) Tp long,
 %% Parameters for Target %%%
 R0 = 30;            % R0 is initially 30 meters
 theta = 10;         % theta = azimuth angle, initially at 10 degrees
-v = 137;             % vertical  velocity is 10 m/s
+v = 10;             % vertical  velocity is 10 m/s
 
 %% Received signals
 za1 = zeros(size(t));   % received signal from transmitter 1
@@ -50,22 +50,21 @@ Pnoise = kTo*BW*F;
 sigma_n=sqrt(Pnoise/2); % You should calculate using k T0 BW F
 noise = sigma_n*(randn(1,length(t))) + 1i*(sigma_n*(randn(1,length(t))));
 
+%% Simulate the Signal
 tx1=[ 0, lambda/4]; tx2=[0, -lambda/4]; rx=[0,0];
-trueAz= zeros(Np,1)
+trueAz= zeros(Np,1); %Variable to hold the true azimuth angle of the target
 
 % calculate azimuth angle, range, and received signals at each location
 for k=0:Np-1
-    target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v]
+    target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v]; %Calculates current target location
     
     Rup1 = norm(tx1-target); %tx1 to target distance
     Rup2= norm(tx2-target); %tx2 to target distance
     Rdown = norm(rx-target); %rx to target distance
-    trueAz(k+1) = atan(target(2)/target(1))*180/pi;
+    trueAz(k+1) = atan(target(2)/target(1))*180/pi; %add data to true azimuth location
 
-    
-   Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); % You should  compute for each pulse using radar 
-         % range eqn, OR ccompute once for some nominal range 
-         % independent of k
+   %Scaling due to Friis Transmission Equation
+   Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
     
     %Signal is 0 everywhere except the current pulse so addition is across
     %entire vector
@@ -80,40 +79,47 @@ for k=0:Np-1
         (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
 end
 %%
+%Receiver receives both the up and down ramps
 za = za1+za2;
 
+%Create a plot of the signal in time
 figure(4)
 plot(t,abs(za))
 xlabel('time (s)') 
 ylabel('abs(rx)')
 set(gca,'fontsize',18)
 
-za=za+noise;
 
+za=za+noise; %Combines the signal and the noise
+
+%Plots the noisy signal in time
 figure(5)
 plot(t,abs(za))
 xlabel('time (s)') 
 ylabel('abs(rx)')
 set(gca,'fontsize',18)
 
-%% Match Filter
+%% Match Filter/Frequency
 %Prepare match filter for Tx1
 tm=0:Ts:tau-Ts;                             %time range
 hu=exp(1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
-%hu = exp(1i*(2*pi*fc*tm+pi*beta/tau*tm.^2)); %Up Ramp signal
 hu=conj(fliplr(hu));                        %conjugate and flip the time.
 
 %Prepare match filter for TX2
-hd = exp(-1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse up
-%hd = exp(1i*(2*pi*fc*tm-pi*beta/tau*tm.^2)); %Down ramp signal
+hd = exp(-1i*pi*(beta/tau).*(tm-(tau/2)) .^2); %TX pulse down
 hd = conj(fliplr(hd));
 
-Ntau = 500; %The number of delays to test out
+Ntau = 500; %The number of delays(ranges) to test out
 receivearray=zeros(Np,tau*fs+Ntau); %20,000 is tau*fs the Ntau padding is so that we can do convolution without samples not overlapping
+
+%Prepares rx data for received filtering
+%Receive array is Np x Ntau
 for k=0:Np-1
-    receivearray(k+1,:)=za(k*uint64(Tp*fs)+1:round(k*uint64(Tp*fs)+tau*fs+Ntau));%Essentially takes each chirp of data?
+    receivearray(k+1,:)=za(k*uint64(Tp*fs)+1:round(k*uint64(Tp*fs)+tau*fs+Ntau)); %Pads each pulse with Ntau points so that data
 end
 
+%Holds results of matched filtering. Np x Ntau+1.
+%the 
 UpArray=zeros(Np,Ntau+1); 
 DownArray=zeros(Np,Ntau+1);
 for k=0:Np-1
@@ -126,30 +132,41 @@ end
 taugrid=(0:Ntau)*Ts; %Different delays which are tested each delay corresponds to a range of 2*R/c
 figure(1);imagesc(taugrid,1:64,abs(UpArray));
 xlabel('Delay'); ylabel('Pulse No');
+
 figure(2);imagesc(taugrid,1:64,abs(DownArray));
 xlabel('Delay'); ylabel('Pulse No');
 
+%% 
+%Takes the fft of each column (i.e across dim1 which is rows)
+%So this gives us an fft of length Np for each of the Ntau delays/ranges
+%taking the fft across pulses gives the doppler frequency because ...
 rangedopplerUp=fftshift( fft(UpArray,[],1),1);
 rangedopplerDown=fftshift( fft(DownArray,[],1),1);
 
-nugrid=1/Np*(-Np/2:1:(Np/2)-1);
-taugrid=(0:Ntau)*Ts;
+
+nugrid=1/Np*(-Np/2:1:(Np/2)-1); %The nugrid contains all the doppler frequencies
+taugrid=(0:Ntau)*Ts;            %The taugrid contains all the delay frequencies
 figure(3);imagesc(taugrid,nugrid, abs(rangedopplerUp))
+xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');title('Up Ramp')
+set(gca,'fontsize',18)
+
 figure(4);imagesc(taugrid,nugrid, abs(rangedopplerDown))
+xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');title('Down Ramp')
+set(gca,'fontsize',18)
 
-xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');
-
+%Finds maximum of each array across delays/ranges (i.e finds max range and
+%index) for each of the pulses
 [m,d1] = max(abs(UpArray),[],2);
 [m,d2] = max(abs(DownArray),[],2);
 
-range_d1 = (d1-1)*Ts*c/2;
+range_d1 = taugrid(d1)*c/2;
 figure(5);
 plot(range_d1);
 xlabel('Pulse No');
 ylabel('Range(m)');
 title('Up Pulse');
 
-range_d2 = (d2-1)*Ts*c/2;
+range_d2 = taugrid(d2)*c/2;
 figure(6);
 plot(range_d2);
 xlabel('Pulse No');
