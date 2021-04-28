@@ -140,7 +140,8 @@ xlabel('Delay'); ylabel('Pulse No');
 %Takes the fft of each column (i.e across dim1 which is rows)
 %So this gives us an fft of length Np for each of the Ntau delays/ranges
 %i.e we are taking fft across the number of pulses. As the object moves
-%towards us there is a consta
+%towards us there is a constant phase shift between each measurement. The
+%frequency of this phase shift corresponds to the doppler frequency
 rangedopplerUp=fftshift( fft(UpArray,[],1),1);
 rangedopplerDown=fftshift( fft(DownArray,[],1),1);
 
@@ -199,8 +200,14 @@ set(gca,'fontsize',18)
 range_d1 = taugrid(d1)*c/2;
 range_d2 = taugrid(d2)*c/2;
 
-[m,s1] = max(abs(rangedopplerUp),[],2);
-[m,s2] = max(abs(rangedopplerDown),[],2);
+[m,s1] = max(abs(rangedopplerUp(:,d1)));
+[m,s2] = max(abs(rangedopplerDown(:,d2)));
+
+radial_speed1 = nugrid(s1)*fp; %converts to real frequency
+radial_speed1 = radial_speed1*c/(2*fc); %frequency -> velocity
+
+radial_speed2 = nugrid(s2)*fp; %converts to real frequency
+radial_speed2 = radial_speed2*c/(2*fc); %frequency -> velocity
 
 %% Determine the Azimuth Angle
 azAng = zeros(size(UpArray,1),1);
