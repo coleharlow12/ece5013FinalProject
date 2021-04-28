@@ -40,9 +40,9 @@ theta = 10;         % theta = azimuth angle, initially at 10 degrees
 v = 10;             % vertical  velocity is 10 m/s
 
 %% Received signals
-za1 = zeros(size(t));   % received signal from transmitter 1
-za2 = zeros(size(t));   % received signal from transmitter 2
-za = zeros(size(t));    % Combined RX signal
+% za1 = zeros(size(t));   % received signal from transmitter 1
+% za2 = zeros(size(t));   % received signal from transmitter 2
+% za = zeros(size(t));    % Combined RX signal
 
 %% Simulate noise
 kTo = 4*10^-21;
@@ -53,32 +53,72 @@ noise = sigma_n*(randn(1,length(t))) + 1i*(sigma_n*(randn(1,length(t))));
 %% Simulate the Signal
 tx1=[ 0, lambda/4]; tx2=[0, -lambda/4]; rx=[0,0];
 trueAz= zeros(Np,1); %Variable to hold the true azimuth angle of the target
+% 
+% %calculate azimuth angle, range, and received signals at each location
+% for k=0:Np-1
+%     target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v] %Calculates current target location
+%     
+%     Rup1 = norm(tx1-target); %tx1 to target distance
+%     Rup2= norm(tx2-target); %tx2 to target distance
+%     Rdown = norm(rx-target); %rx to target distance
+%     trueAz(k+1) = atan(target(2)/target(1))*180/pi; %add data to true azimuth location
+% 
+%    %Scaling due to Friis Transmission Equation
+%    Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
+%     
+%     %Signal is 0 everywhere except the current pulse so addition is across
+%     %entire vector
+%     %up ramp
+%     za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
+%         (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
+%         (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
+%     
+%     %down ramp
+%     za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
+%         (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
+%         (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
+% end
 
-% calculate azimuth angle, range, and received signals at each location
-for k=0:Np-1
-    target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v]; %Calculates current target location
-    
+%Loops across pulses
+t = ((1/(fs)):(1/(fs)):Tp); %Timing for a single pulse
+rxSigU = zeros(size(t)); %Stores signal for each pulse
+rxSigD = zeros(size(t)); %Stores signal for each pulse
+
+for iP = 1:Np   
+    target=[R0*cosd(theta) R0*sind(theta)-(iP-1)*Tp*v] %Calculates current target location
     Rup1 = norm(tx1-target); %tx1 to target distance
     Rup2= norm(tx2-target); %tx2 to target distance
     Rdown = norm(rx-target); %rx to target distance
-    trueAz(k+1) = atan(target(2)/target(1))*180/pi; %add data to true azimuth location
-
-   %Scaling due to Friis Transmission Equation
-   Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
+    trueAz(iP) = atan(target(2)/target(1))*180/pi; %add data to true azimuth location
+    tof = (Rup1+Rdown)/c;
     
-    %Signal is 0 everywhere except the current pulse so addition is across
-    %entire vector
-    %up ramp
-    za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
-        (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
-        (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
+    Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
+    for it = 1:length(t)
+        %signal is zero before the pulse starts/after the pulse ends
+        if (t(it)< (tof) || t(it)>(tof+tau) )
+            rxSigU(it) = 0;
+            rxSigD(it) = 0;
+        else
+            % Accounts for constant range related delay
+            % then accounts for ramping based frequency
+            rxSigU(it) = Ac*(exp(-1i*(2*pi/lambda)*(Rup1+Rdown)) * ...
+                         exp(1i*pi*(beta/tau)*(t(it)-tau/2-(Rup1+Rdown)/c )^2));          
+            rxSigD(it) = Ac*(exp(-1i*(2*pi/lambda)*(Rup2+Rdown)) * ...
+                         exp(-1i*pi*(beta/tau)*(t(it)-tau/2-(Rup2+Rdown)/c )^2));
+        end
+    end
     
-    %down ramp
-    za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
-        (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
-        (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
+    if iP == 1
+        za1=rxSigU;
+        za2=rxSigD;
+    else
+        za1 = [za1,rxSigU];
+        za2 = [za2,rxSigD];
+    end
 end
+
 %%
+t = 0:Ts:Np*Tp-Ts;
 %Receiver receives both the up and down ramps
 za = za1+za2;
 
@@ -89,15 +129,7 @@ xlabel('time (s)')
 ylabel('abs(rx)')
 set(gca,'fontsize',18)
 
-
 za=za+noise; %Combines the signal and the noise
-
-%Plots the noisy signal in time
-figure(5)
-plot(t,abs(za))
-xlabel('time (s)') 
-ylabel('abs(rx)')
-set(gca,'fontsize',18)
 
 %% Match Filter/Frequency
 %Prepare match filter for Tx1
@@ -181,14 +213,5 @@ difAng = (angU-angD);
 if(difAng<-1)
     difAng=difAng+2*pi;
 end
+d = lambda/2;
 ang = asin(difAng*lambda/(2*pi*d))*180/pi;
-
-%% Functions
-%%% Creates a rectangular pulse of width tau from 0<t<tau %%%
-function p = rpulse(t,tau)
-    p = (t<=tau)&(t>=0);
-end
-
-
-
-
