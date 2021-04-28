@@ -136,7 +136,7 @@ xlabel('Delay'); ylabel('Pulse No');
 figure(2);imagesc(taugrid,1:64,abs(DownArray));
 xlabel('Delay'); ylabel('Pulse No');
 
-%% 
+%% Plots the Range Doppler Maps
 %Takes the fft of each column (i.e across dim1 which is rows)
 %So this gives us an fft of length Np for each of the Ntau delays/ranges
 %i.e we are taking fft across the number of pulses. As the object moves
@@ -156,52 +156,17 @@ figure(4);imagesc(taugrid,nugrid, abs(rangedopplerDown))
 xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');title('Down Ramp')
 set(gca,'fontsize',18)
 
-%Finds maximum of each array across delays/ranges (i.e finds max range and
-%index) for each of the pulses
-[m,d1] = max(abs(UpArray),[],2);
-[m,d2] = max(abs(DownArray),[],2);
-
-range_d1 = taugrid(d1)*c/2;
-figure(5);
-plot(range_d1);
-xlabel('Pulse No');
-ylabel('Range(m)');
-title('Up Pulse');
-
-range_d2 = taugrid(d2)*c/2;
-figure(6);
-plot(range_d2);
-xlabel('Pulse No');
-ylabel('Range(m)');
-title('Down Pulse');
-
-[m,s1] = max(abs(rangedopplerUp),[],2);
-[m,s2] = max(abs(rangedopplerDown),[],2);
-
-%radial_speed1 = ((s1-1)/Ntau*fp)*c/(2*fc);
-radial_speed1 = nugrid(s1)*fp %converts to real frequency
-radial_speed1 = radial_speed1*c/(2*fc);
-
-figure(7);
-plot(radial_speed1);
-xlabel('Pulse Number');ylabel('Speed (m/s)');title('Up Antenna(1)')
-set(gca,'fontsize',18)
-
-radial_speed2 = ((s2-1)/Ntau*fp)*c/(2*fc);
-figure(8);
-plot(radial_speed2);
-xlabel('Pulse Number');ylabel('Speed (m/s)');title('Down Antenna(2)')
-set(gca,'fontsize',18)
-
-%% Find Range / Velocity For One CPI
+%% Find Range / Velocity / Angle For One CPI
+% Find Range
 [~,d1] = max(abs(sum(rangedopplerUp,1))); %Sum integrates coherently across pulses in dimension 1
 [~,d2] = max(abs(sum(rangedopplerDown,1))); 
 
 range_d1 = taugrid(d1)*c/2;
 range_d2 = taugrid(d2)*c/2;
 
-[m,s1] = max(abs(rangedopplerUp(:,d1)));
-[m,s2] = max(abs(rangedopplerDown(:,d2)));
+% Find Velocity
+[~,s1] = max(abs(rangedopplerUp(:,d1)));
+[~,s2] = max(abs(rangedopplerDown(:,d2)));
 
 radial_speed1 = nugrid(s1)*fp; %converts to real frequency
 radial_speed1 = radial_speed1*c/(2*fc); %frequency -> velocity
@@ -209,52 +174,20 @@ radial_speed1 = radial_speed1*c/(2*fc); %frequency -> velocity
 radial_speed2 = nugrid(s2)*fp; %converts to real frequency
 radial_speed2 = radial_speed2*c/(2*fc); %frequency -> velocity
 
-%% Determine the Azimuth Angle
-azAng = zeros(size(UpArray,1),1);
-d = lambda/2;
-
-for ip = 1:size(UpArray,1) %Iterate across all pulses
-    %if d1(ip)==d2(ip)
-        angU = angle(UpArray(ip,d1(ip)));
-        angD = angle(DownArray(ip,d2(ip)));
-        difAng = (angU-angD);
-        
-        if(difAng>1)
-            difAng=difAng-2*pi;
-        end
-        
-        if(difAng<-1)
-            difAng=difAng+2*pi;
-        end
-        difAng;
-            
-        ang = asin(difAng*lambda/(2*pi*d))*180/pi;
-        if isreal(ang)
-            azAng(ip)=ang;
-        else
-            %azAng(ip)=[];
-        end
-    %end
+% Find Angle
+angU = angle(sum(rangedopplerUp(:,d1)));
+angD = angle(sum(rangedopplerDown(:,d2)));
+difAng = (angU-angD);
+if(difAng<-1)
+    difAng=difAng+2*pi;
 end
-
-figure(9)
-plot(azAng,'LineWidth',2)
-hold on
-plot(trueAz,'LineWidth',2)
-hold off
-xlabel('pulse')
-ylabel('azimuth location')
-set(gca,'fontsize',18)
-legend('Detected','True')
-
-
+ang = asin(difAng*lambda/(2*pi*d))*180/pi;
 
 %% Functions
 %%% Creates a rectangular pulse of width tau from 0<t<tau %%%
 function p = rpulse(t,tau)
     p = (t<=tau)&(t>=0);
 end
-
 
 
 

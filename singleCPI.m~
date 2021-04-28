@@ -175,13 +175,48 @@ radial_speed2 = nugrid(s2)*fp; %converts to real frequency
 radial_speed2 = radial_speed2*c/(2*fc); %frequency -> velocity
 
 % Find Angle
-angU = angle(sum(rangedopplerUp(:,d1)));
-angD = angle(sum(rangedopplerDown(:,d2)));
-difAng = (angU-angD);
-if(difAng<-1)
-    difAng=difAng+2*pi;
+angU = angle(
+
+
+%% Determine the Azimuth Angle
+azAng = zeros(size(UpArray,1),1);
+d = lambda/2;
+
+for ip = 1:size(UpArray,1) %Iterate across all pulses
+    %if d1(ip)==d2(ip)
+        angU = angle(UpArray(ip,d1(ip)));
+        angD = angle(DownArray(ip,d2(ip)));
+        difAng = (angU-angD);
+        
+        if(difAng>1)
+            difAng=difAng-2*pi;
+        end
+        
+        if(difAng<-1)
+            difAng=difAng+2*pi;
+        end
+        difAng;
+            
+        ang = asin(difAng*lambda/(2*pi*d))*180/pi;
+        if isreal(ang)
+            azAng(ip)=ang;
+        else
+            %azAng(ip)=[];
+        end
+    %end
 end
-ang = asin(difAng*lambda/(2*pi*d))*180/pi;
+
+figure(9)
+plot(azAng,'LineWidth',2)
+hold on
+plot(trueAz,'LineWidth',2)
+hold off
+xlabel('pulse')
+ylabel('azimuth location')
+set(gca,'fontsize',18)
+legend('Detected','True')
+
+
 
 %% Functions
 %%% Creates a rectangular pulse of width tau from 0<t<tau %%%
