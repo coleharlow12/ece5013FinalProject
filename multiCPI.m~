@@ -165,8 +165,8 @@ for iCPI = 1:CPI
     [~,d1] = max(abs(sum(rangedopplerUp,1))); %Sum integrates coherently across pulses in dimension 1
     [~,d2] = max(abs(sum(rangedopplerDown,1))); 
 
-    range_d1(iCPI) = taugrid(d1)*c/2;
-    range_d2(iCPI) = taugrid(d2)*c/2;
+    range_d1 = taugrid(d1)*c/2;
+    range_d2 = taugrid(d2)*c/2;
 
     % Find Velocity
     [~,s1] = max(abs(rangedopplerUp(:,d1)));

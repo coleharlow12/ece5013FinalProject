@@ -55,28 +55,57 @@ tx1=[ 0, lambda/4]; tx2=[0, -lambda/4]; rx=[0,0];
 trueAz= zeros(Np,1); %Variable to hold the true azimuth angle of the target
 
 % calculate azimuth angle, range, and received signals at each location
-for k=0:Np-1
-    target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v]; %Calculates current target location
-    
+% for k=0:Np-1
+%     target=[R0*cosd(theta) R0*sind(theta)-k*Tp*v] %Calculates current target location
+%     
+%     Rup1 = norm(tx1-target); %tx1 to target distance
+%     Rup2= norm(tx2-target); %tx2 to target distance
+%     Rdown = norm(rx-target); %rx to target distance
+%     trueAz(k+1) = atan(target(2)/target(1))*180/pi; %add data to true azimuth location
+% 
+%    %Scaling due to Friis Transmission Equation
+%    Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
+%     
+%     %Signal is 0 everywhere except the current pulse so addition is across
+%     %entire vector
+%     %up ramp
+%     za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
+%         (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
+%         (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
+%     
+%     %down ramp
+%     za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
+%         (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
+%         (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
+% end
+
+%Loops across pulses
+t = (1/(fs)):(1/(fs)):Tp; %Timing for a single pulse
+rxsigU = zeros(size(t)); %Stores signal for each pulse
+rxsigD = zeros(size(t)); %Stores signal for each pulse
+
+for iP = 1:Np   
+    target=[R0*cosd(theta) R0*sind(theta)-iP*Tp*v] %Calculates current target location
     Rup1 = norm(tx1-target); %tx1 to target distance
     Rup2= norm(tx2-target); %tx2 to target distance
     Rdown = norm(rx-target); %rx to target distance
     trueAz(k+1) = atan(target(2)/target(1))*180/pi; %add data to true azimuth location
-
-   %Scaling due to Friis Transmission Equation
-   Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
     
-    %Signal is 0 everywhere except the current pulse so addition is across
-    %entire vector
-    %up ramp
-    za1 = za1 + Ac*(rpulse(t-k*Tp-(Rup1+Rdown)/c,tau)) .* ...
-        (exp(-1i*(2*pi/lambda)*(Rup1+Rdown))) .* ...
-        (exp(1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup1+Rdown)/c )) .^2));
-    
-    %down ramp
-    za2 = za2 + Ac*(rpulse(t-k*Tp-(Rup2+Rdown)/c,tau)) .* ...
-        (exp(-1i*(2*pi/lambda)*(Rup2+Rdown))) .* ...
-        (exp(-1i*pi*(beta/tau).*(t-(tau/2)-(k*Tp+(Rup2+Rdown)/c )) .^2));
+    Ac= sqrt(Pt*Ga^2*lambda^2*rcs/((4*pi)^3*Rup1^4)); 
+    for it = 1:length(t)
+        %signal is zero before the pulse starts/after the pulse ends
+        if (t(it)< trnd || t(it)>(trnd+Tau) )
+            rxsigU(it) = 0;
+            rxsigD(it) = 0;
+        else
+            %Accounts for constant range related delay
+            % then accounts for r
+            rxsigU(it) = Ac*(exp(-1i*(2*pi/lambda)*(Rup1+Rdown)) * ...
+                         exp(1i*pi*(beta/tau)*(t(it)-(tau/2)-(k*Tp+(Rup1+Rdown)/c ))^2));          
+            rxsigD(it) = Ac*(exp(-1i*(2*pi/lambda)*(Rup1+Rdown)) * ...
+                         exp(-1i*pi*(beta/tau)*(t(it)-(tau/2)-(k*Tp+(Rup1+Rdown)/c ))^2));
+        end
+    end
 end
 %%
 %Receiver receives both the up and down ramps
@@ -175,48 +204,13 @@ radial_speed2 = nugrid(s2)*fp; %converts to real frequency
 radial_speed2 = radial_speed2*c/(2*fc); %frequency -> velocity
 
 % Find Angle
-angU = angle(
-
-
-%% Determine the Azimuth Angle
-azAng = zeros(size(UpArray,1),1);
-d = lambda/2;
-
-for ip = 1:size(UpArray,1) %Iterate across all pulses
-    %if d1(ip)==d2(ip)
-        angU = angle(UpArray(ip,d1(ip)));
-        angD = angle(DownArray(ip,d2(ip)));
-        difAng = (angU-angD);
-        
-        if(difAng>1)
-            difAng=difAng-2*pi;
-        end
-        
-        if(difAng<-1)
-            difAng=difAng+2*pi;
-        end
-        difAng;
-            
-        ang = asin(difAng*lambda/(2*pi*d))*180/pi;
-        if isreal(ang)
-            azAng(ip)=ang;
-        else
-            %azAng(ip)=[];
-        end
-    %end
+angU = angle(sum(rangedopplerUp(:,d1)));
+angD = angle(sum(rangedopplerDown(:,d2)));
+difAng = (angU-angD);
+if(difAng<-1)
+    difAng=difAng+2*pi;
 end
-
-figure(9)
-plot(azAng,'LineWidth',2)
-hold on
-plot(trueAz,'LineWidth',2)
-hold off
-xlabel('pulse')
-ylabel('azimuth location')
-set(gca,'fontsize',18)
-legend('Detected','True')
-
-
+ang = asin(difAng*lambda/(2*pi*d))*180/pi;
 
 %% Functions
 %%% Creates a rectangular pulse of width tau from 0<t<tau %%%
