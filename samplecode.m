@@ -30,4 +30,54 @@ for ii=1:N_cpi;
    % subtracting average (across slow time) range-profile from each return 
 end
 
+% Two pulse canceller
+for ii=2:M
+   phase_history1_tp(:,ii)= phase_history1(:,ii) - phase_history1(:,ii-1);
+   phase_history2_tp(:,ii)= phase_history2(:,ii) - phase_history2(:,ii-1);
+end
+
+% Three pulse canceller
+for ii=2:M
+   phase_history1_thrp(:,ii)= phase_history1_tp(:,ii) - phase_history1_tp(:,ii-1);
+   phase_history2_thrp(:,ii)= phase_history2_tp(:,ii) - phase_history2_tp(:,ii-1);
+end
+
+figure(1)
+subplot(1,3,1);
+imagesc(abs(phase_history1))
+xlabel('Pulse No');
+ylabel('Range bin');
+title('Phase History 1');
+
+subplot(1,3,2);
+imagesc(abs(phase_history1_tp))
+xlabel('Pulse No');
+ylabel('Range bin');
+title('Phase History 1: 2-Pulse Cancelled');
+
+subplot(1,3,3);
+imagesc(abs(phase_history1_thrp))
+xlabel('Pulse No');
+ylabel('Range bin');
+title('Phase History 1: 3-Pulse Cancelled');
+
+figure(2)
+subplot(1,3,1);
+imagesc(abs(phase_history2))
+xlabel('Pulse No');
+ylabel('Range bin');
+title('Phase History 2');
+
+subplot(1,3,2);
+imagesc(abs(phase_history2_tp))
+xlabel('Pulse No');
+ylabel('Range bin');
+title('Phase History 2: 2-Pulse Cancelled');
+
+subplot(1,3,3);
+imagesc(abs(phase_history2_thrp))
+xlabel('Pulse No');
+ylabel('Range bin');
+title('Phase History 2: 3-Pulse Cancelled');
+
 fclose(fid);
