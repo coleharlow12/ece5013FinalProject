@@ -136,7 +136,7 @@ xlabel('Delay'); ylabel('Pulse No');
 figure(2);imagesc(taugrid,1:64,abs(DownArray));
 xlabel('Delay'); ylabel('Pulse No');
 
-%% 
+%% Plots the Range Doppler Maps
 %Takes the fft of each column (i.e across dim1 which is rows)
 %So this gives us an fft of length Np for each of the Ntau delays/ranges
 %i.e we are taking fft across the number of pulses. As the object moves
@@ -156,43 +156,6 @@ figure(4);imagesc(taugrid,nugrid, abs(rangedopplerDown))
 xlabel('Delay (sec)'); ylabel('Normalized Frequency (sec)');title('Down Ramp')
 set(gca,'fontsize',18)
 
-%Finds maximum of each array across delays/ranges (i.e finds max range and
-%index) for each of the pulses
-[m,d1] = max(abs(UpArray),[],2);
-[m,d2] = max(abs(DownArray),[],2);
-
-range_d1 = taugrid(d1)*c/2;
-figure(5);
-plot(range_d1);
-xlabel('Pulse No');
-ylabel('Range(m)');
-title('Up Pulse');
-
-range_d2 = taugrid(d2)*c/2;
-figure(6);
-plot(range_d2);
-xlabel('Pulse No');
-ylabel('Range(m)');
-title('Down Pulse');
-
-[m,s1] = max(abs(rangedopplerUp),[],2);
-[m,s2] = max(abs(rangedopplerDown),[],2);
-
-%radial_speed1 = ((s1-1)/Ntau*fp)*c/(2*fc);
-radial_speed1 = nugrid(s1)*fp %converts to real frequency
-radial_speed1 = radial_speed1*c/(2*fc);
-
-figure(7);
-plot(radial_speed1);
-xlabel('Pulse Number');ylabel('Speed (m/s)');title('Up Antenna(1)')
-set(gca,'fontsize',18)
-
-radial_speed2 = ((s2-1)/Ntau*fp)*c/(2*fc);
-figure(8);
-plot(radial_speed2);
-xlabel('Pulse Number');ylabel('Speed (m/s)');title('Down Antenna(2)')
-set(gca,'fontsize',18)
-
 %% Find Range / Velocity For One CPI
 [~,d1] = max(abs(sum(rangedopplerUp,1))); %Sum integrates coherently across pulses in dimension 1
 [~,d2] = max(abs(sum(rangedopplerDown,1))); 
@@ -200,8 +163,8 @@ set(gca,'fontsize',18)
 range_d1 = taugrid(d1)*c/2;
 range_d2 = taugrid(d2)*c/2;
 
-[m,s1] = max(abs(rangedopplerUp(:,d1)));
-[m,s2] = max(abs(rangedopplerDown(:,d2)));
+[~,s1] = max(abs(rangedopplerUp(:,d1)));
+[~,s2] = max(abs(rangedopplerDown(:,d2)));
 
 radial_speed1 = nugrid(s1)*fp; %converts to real frequency
 radial_speed1 = radial_speed1*c/(2*fc); %frequency -> velocity
