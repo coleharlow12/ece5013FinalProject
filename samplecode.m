@@ -101,9 +101,16 @@ for iCPI=1:N_cpi
    
    %% Find Range / Velocity / Angle For One CPI
     % Find Range
-    [~,d1] = max(abs(sum(rangedopplerUp,2))); %Sum integrates coherently across pulses in dimension 1
-    [~,d2] = max(abs(sum(rangedopplerDown,2))); 
+%     [~,d1] = max(abs(sum(rangedopplerUp,2))); %Sum integrates coherently across pulses in dimension 1
+%     [~,d2] = max(abs(sum(rangedopplerDown,2))); 
 
+    maximum = max(max(rangedopplerUp));
+    [x,y] = find(rangedopplerUp == maximum);
+    d1=x;
+    maximum = max(max(rangedopplerDown));
+    [x,y] = find(rangedopplerDown == maximum);
+    d2=x;
+    
     range_d1(iCPI) = taugrid(d1);
     range_d2(iCPI) = taugrid(d2);
     
@@ -127,16 +134,17 @@ for iCPI=1:N_cpi
 end
 figure(2)
 hold on
-plot(range_d1)
-plot(range_d2)
+% plot(range_d1)
+% plot(range_d2)
 plot((range_d1+range_d2)/2)
 hold off
 title('range')
 
 figure(3)
 hold on 
-plot(radial_speed1)
-plot(radial_speed2)
+% plot(radial_speed1)
+% plot(radial_speed2)
+plot((radial_speed1+radial_speed2)/2)
 hold off
 title('speed')
 
